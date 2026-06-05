@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StreamVault — Premium IPTV</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════ SIDEBAR ═══════════════════════════════════ -->
+  <aside class="sidebar" id="sidebar" role="complementary" aria-label="Channel Sidebar">
+
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon" aria-hidden="true">
+          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
+            <circle cx="13" cy="13" r="11.5" stroke="url(#lg1)" stroke-width="1.5"/>
+            <path d="M10 9L18 13L10 17V9Z" fill="url(#lg2)"/>
+            <defs>
+              <linearGradient id="lg1" x1="1.5" y1="1.5" x2="24.5" y2="24.5">
+                <stop offset="0%" stop-color="#e94560"/>
+                <stop offset="100%" stop-color="#7b2ff7"/>
+              </linearGradient>
+              <linearGradient id="lg2" x1="10" y1="9" x2="18" y2="17">
+                <stop offset="0%" stop-color="#e94560"/>
+                <stop offset="100%" stop-color="#7b2ff7"/>
+              </linearGradient>
+            </defs>
+          </svg>
+        </div>
+        <span class="logo-text">StreamVault</span>
+      </div>
+      <button class="sidebar-toggle" id="sidebarToggle" aria-label="Close sidebar" aria-expanded="true">
+        <!-- Hamburger / X icon -->
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M4 6h14M4 11h14M4 16h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- M3U Loader -->
+    <div class="m3u-loader" id="m3uLoader">
+      <p class="loader-label">Load Playlist</p>
+      <div class="loader-tabs">
+        <button class="loader-tab active" data-tab="url">URL</button>
+        <button class="loader-tab" data-tab="file">File</button>
+      </div>
+      <div class="loader-body tab-url">
+        <input type="url" id="m3uUrl" class="m3u-input" placeholder="https://example.com/playlist.m3u" aria-label="M3U playlist URL" />
+        <button class="btn-load" id="loadUrlBtn" aria-label="Load playlist from URL">
+          <!-- Download arrow icon -->
+          <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
+            <path d="M8.5 2v9M5 8l3.5 3.5L12 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M2 14h13" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+          Load
+        </button>
+      </div>
+      <div class="loader-body tab-file" style="display:none;">
+        <label class="file-drop" id="fileDrop" tabindex="0" aria-label="Drop M3U file or click to browse">
+          <!-- Cloud upload icon -->
+          <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+            <path d="M9 20H7a5 5 0 01-.8-9.93A7 7 0 0120 10a5 5 0 011 9.9H19" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M11 17l3-3 3 3M14 14v8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span>Drop .m3u file or <u>browse</u></span>
+          <input type="file" id="m3uFile" accept=".m3u,.m3u8" style="display:none;" aria-hidden="true" />
+        </label>
+      </div>
+      <button class="btn-demo" id="loadDemoBtn" aria-label="Load demo channels">
+        <!-- Bolt / zap icon -->
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M9.5 1.5L3 9h5.5L6.5 14.5L13 7H7.5L9.5 1.5Z" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Load Demo Channels
+      </button>
+    </div>
+
+    <!-- Search -->
+    <div class="search-wrap">
+      <svg class="search-icon" width="18" height="18" viewBox="0 0 18 18" fill="none" aria-hidden="true">
+        <circle cx="7.5" cy="7.5" r="5.5" stroke="currentColor" stroke-width="1.7"/>
+        <path d="M12 12L16 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+      </svg>
+      <input type="search" id="searchInput" class="search-input" placeholder="Search channels…" aria-label="Search channels" />
+      <button class="search-clear" id="searchClear" aria-label="Clear search" style="display:none;">
+        <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
+          <path d="M1.5 1.5l12 12M13.5 1.5l-12 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Category Filter -->
+    <div class="category-strip" id="categoryStrip" role="tablist" aria-label="Channel categories"></div>
+
+    <!-- Channel List Header -->
+    <div class="channel-list-header">
+      <span id="channelCount" class="channel-count">0 Channels</span>
+      <div class="sort-controls">
+        <button class="sort-btn active" data-sort="default" aria-label="Default sort">Default</button>
+        <button class="sort-btn" data-sort="name" aria-label="Sort by name">A–Z</button>
+        <button class="sort-btn" data-sort="fav" aria-label="Show favorites">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" style="display:inline;vertical-align:-2px;margin-right:3px">
+            <path d="M6.5 10.5s-5-3.1-5-6A3.2 3.2 0 016.5 2 3.2 3.2 0 0111.5 4.5c0 2.9-5 6-5 6z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/>
+          </svg>Favs
+        </button>
+      </div>
+    </div>
+
+    <div class="channel-list" id="channelList" role="list" aria-label="Channel list">
+      <div class="empty-state" id="emptyState">
+        <!-- TV monitor icon -->
+        <div class="empty-icon" aria-hidden="true">
+          <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+            <rect x="4" y="6" width="44" height="30" rx="4" stroke="currentColor" stroke-width="1.8"/>
+            <path d="M18 42h16M26 36v6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M15 21l8-5 5 4 5-6" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="37" cy="14" r="2" fill="currentColor" opacity=".4"/>
+          </svg>
+        </div>
+        <p>Load a playlist to get started</p>
+        <small>Supports M3U / M3U8 formats</small>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- ═══════════════════════════════════ MAIN ═══════════════════════════════════ -->
+  <main class="main-content" id="mainContent">
+
+    <!-- Top Bar -->
+    <header class="topbar" role="banner">
+      <div class="topbar-left">
+        <button class="menu-btn" id="menuBtn" aria-label="Toggle sidebar" aria-controls="sidebar" aria-expanded="true">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M3 6h18M3 12h18M3 18h18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
+        <div class="breadcrumb">
+          <span id="nowPlayingLabel">Select a Channel</span>
+          <span class="breadcrumb-sep" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span id="nowPlayingCategory" class="cat-badge"></span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <div class="live-badge" id="liveBadge" style="display:none;">
+          <span class="live-dot" aria-hidden="true"></span>LIVE
+        </div>
+        <button class="icon-btn" id="favBtn" aria-label="Add to favorites" title="Add to favorites">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 18s-8.5-5.2-8.5-10A5.5 5.5 0 0111 3a5.5 5.5 0 018.5 5C19.5 12.8 11 18 11 18z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="recentBtn" aria-label="Recently watched" title="Recently watched">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <circle cx="11" cy="11" r="8.5" stroke="currentColor" stroke-width="1.7"/>
+            <path d="M11 6.5v5l3.5 2.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <button class="icon-btn" id="fullscreenBtn" aria-label="Toggle fullscreen" title="Fullscreen">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M3 8V3h5M14 3h5v5M3 14v5h5M19 14v5h-5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Player Area -->
+    <div class="player-section">
+      <div class="player-wrap" id="playerWrap">
+
+        <!-- Idle State -->
+        <div class="player-idle" id="playerIdle">
+          <div class="idle-glow" aria-hidden="true"></div>
+          <div class="idle-content">
+            <div class="idle-icon" aria-hidden="true">
+              <svg width="72" height="72" viewBox="0 0 72 72" fill="none">
+                <circle cx="36" cy="36" r="34" stroke="url(#ig1)" stroke-width="1.5"/>
+                <path d="M27 22L50 36L27 50V22Z" fill="url(#ig2)"/>
+                <defs>
+                  <linearGradient id="ig1" x1="2" y1="2" x2="70" y2="70">
+                    <stop offset="0%" stop-color="#e94560"/>
+                    <stop offset="100%" stop-color="#7b2ff7"/>
+                  </linearGradient>
+                  <linearGradient id="ig2" x1="27" y1="22" x2="50" y2="50">
+                    <stop offset="0%" stop-color="#e94560"/>
+                    <stop offset="100%" stop-color="#7b2ff7"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+            <h2 class="idle-title">Ready to Stream</h2>
+            <p class="idle-sub">Load a playlist and select a channel to begin watching</p>
+          </div>
+        </div>
+
+        <!-- Loading Overlay -->
+        <div class="player-loading" id="playerLoading" style="display:none;" aria-live="polite" aria-label="Loading stream">
+          <div class="spinner" aria-hidden="true">
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+            <div class="spinner-ring"></div>
+          </div>
+          <p>Connecting to stream…</p>
+        </div>
+
+        <!-- Error Overlay -->
+        <div class="player-error" id="playerError" style="display:none;" role="alert">
+          <div class="error-icon" aria-hidden="true">
+            <!-- Warning triangle icon -->
+            <svg width="52" height="52" viewBox="0 0 52 52" fill="none">
+              <path d="M26 6L48 44H4L26 6Z" stroke="url(#errgr)" stroke-width="1.8" stroke-linejoin="round"/>
+              <path d="M26 22v10" stroke="#e94560" stroke-width="2.2" stroke-linecap="round"/>
+              <circle cx="26" cy="37" r="1.8" fill="#e94560"/>
+              <defs>
+                <linearGradient id="errgr" x1="4" y1="6" x2="48" y2="44">
+                  <stop offset="0%" stop-color="#e94560"/>
+                  <stop offset="100%" stop-color="#7b2ff7"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h3>Stream Unavailable</h3>
+          <p id="errorMsg">Unable to connect to this channel's stream.</p>
+          <button class="btn-retry" id="retryBtn">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style="margin-right:6px">
+              <path d="M2 8a6 6 0 1110.5-4M2 8V4M2 8h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Retry
+          </button>
+        </div>
+
+        <!-- Video Element -->
+        <video id="videoPlayer" class="video-el" playsinline preload="none" aria-label="Video player"></video>
+
+        <!-- Custom Controls Overlay -->
+        <div class="controls-overlay" id="controlsOverlay" aria-label="Player controls">
+          <div class="controls-gradient" aria-hidden="true"></div>
+          <div class="controls-bar">
+            <div class="controls-left">
+              <button class="ctrl-btn" id="playPauseBtn" aria-label="Play/Pause">
+                <svg id="playIcon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M6 4l14 8-14 8V4z"/></svg>
+                <svg id="pauseIcon" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" style="display:none;"><path d="M6 4h3.5v16H6zM14.5 4H18v16h-3.5z"/></svg>
+              </button>
+              <div class="volume-wrap">
+                <button class="ctrl-btn" id="muteBtn" aria-label="Mute/Unmute">
+                  <svg id="volIcon" width="22" height="22" viewBox="0 0 22 22" fill="none">
+                    <path d="M4 8H7.5L12 4v14l-4.5-4H4V8z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                    <path d="M16 8c1.3 1 2 2.4 2 3s-.7 2-2 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                  </svg>
+                </button>
+                <input type="range" id="volumeSlider" class="volume-slider" min="0" max="1" step="0.05" value="1" aria-label="Volume" />
+              </div>
+              <span class="channel-info-bar" id="channelInfoBar"></span>
+            </div>
+            <div class="controls-right">
+              <button class="ctrl-btn" id="pipBtn" aria-label="Picture in Picture">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><rect x="2" y="3.5" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><rect x="11" y="11" width="8" height="6" rx="1.2" fill="currentColor"/></svg>
+              </button>
+              <button class="ctrl-btn" id="fsBtn" aria-label="Fullscreen">
+                <svg width="22" height="22" viewBox="0 0 22 22" fill="none"><path d="M3 8V3h5M14 3h5v5M3 14v5h5M19 14v5h-5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Channel Info Strip -->
+    <div class="info-strip" id="infoStrip" style="display:none;" aria-live="polite">
+      <div class="info-logo-wrap" id="infoLogo"></div>
+      <div class="info-meta">
+        <h2 class="info-title" id="infoTitle">—</h2>
+        <span class="info-cat" id="infoCat"></span>
+      </div>
+      <div class="info-actions">
+        <button class="btn-outline" id="stripFavBtn" aria-label="Add to favorites">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="margin-right:5px;vertical-align:-2px">
+            <path d="M7.5 12s-6-3.8-6-7A4 4 0 017.5 2a4 4 0 016 3C13.5 8.2 7.5 12 7.5 12z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+          </svg>Favorite
+        </button>
+        <button class="btn-outline" id="stripShareBtn" aria-label="Share channel">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none" style="margin-right:5px;vertical-align:-2px">
+            <circle cx="11.5" cy="3" r="1.8" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="11.5" cy="12" r="1.8" stroke="currentColor" stroke-width="1.4"/>
+            <circle cx="3.5" cy="7.5" r="1.8" stroke="currentColor" stroke-width="1.4"/>
+            <path d="M5.2 8.4l4.7 2.7M9.9 4l-4.7 2.6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>Share
+        </button>
+      </div>
+    </div>
+
+    <!-- Recently Watched Panel -->
+    <div class="recent-panel glass-panel" id="recentPanel" style="display:none;" aria-label="Recently watched">
+      <div class="panel-header">
+        <h3>Recently Watched</h3>
+        <button class="panel-close" id="recentClose" aria-label="Close panel">
+          <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 2l14 14M16 2L2 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="recent-list" id="recentList"></div>
+    </div>
+
+    <!-- Content Grid Area -->
+    <section class="content-area" id="contentArea" aria-label="Channel grid">
+      <div class="section-header">
+        <h2 class="section-title" id="gridTitle">All Channels</h2>
+        <div class="view-toggle" role="group" aria-label="View mode">
+          <button class="view-btn active" data-view="grid" aria-label="Grid view" aria-pressed="true">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1.5" y="1.5" width="6.5" height="6.5" rx="1.2" fill="currentColor"/><rect x="10" y="1.5" width="6.5" height="6.5" rx="1.2" fill="currentColor"/><rect x="1.5" y="10" width="6.5" height="6.5" rx="1.2" fill="currentColor"/><rect x="10" y="10" width="6.5" height="6.5" rx="1.2" fill="currentColor"/></svg>
+          </button>
+          <button class="view-btn" data-view="list" aria-label="List view" aria-pressed="false">
+            <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><rect x="1.5" y="2.5" width="15" height="3.5" rx="1.2" fill="currentColor"/><rect x="1.5" y="7.5" width="15" height="3.5" rx="1.2" fill="currentColor"/><rect x="1.5" y="12.5" width="15" height="3.5" rx="1.2" fill="currentColor"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="channel-grid" id="channelGrid" role="list" aria-label="Channel grid"></div>
+      <div class="grid-empty" id="gridEmpty" style="display:none;">
+        <div class="grid-empty-icon" aria-hidden="true">
+          <!-- Magnifier with x icon -->
+          <svg width="60" height="60" viewBox="0 0 60 60" fill="none">
+            <circle cx="25" cy="25" r="18" stroke="currentColor" stroke-width="1.7" opacity=".35"/>
+            <path d="M38 38l14 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".35"/>
+            <path d="M19 19l12 12M31 19L19 31" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" opacity=".5"/>
+          </svg>
+        </div>
+        <h3>No channels found</h3>
+        <p>Try a different search term or category</p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ═══════════════════════════════════ MOBILE NAV ═══════════════════════════════════ -->
+  <nav class="mobile-nav" role="navigation" aria-label="Mobile navigation">
+    <button class="mobile-nav-btn active" data-panel="home" aria-label="Home">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M3 10.5L12 3l9 7.5V21h-6v-6H9v6H3V10.5z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-btn" data-panel="channels" aria-label="Channels" id="mobileChannelsBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="3" width="20" height="15" rx="2.5" stroke="currentColor" stroke-width="1.7"/><path d="M7 21h10M12 18v3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span>Channels</span>
+    </button>
+    <button class="mobile-nav-btn" data-panel="favorites" aria-label="Favorites">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 20.5s-9-5.8-9-11A6 6 0 0112 4a6 6 0 019 5.5c0 5.2-9 11-9 11z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+      <span>Favorites</span>
+    </button>
+    <button class="mobile-nav-btn" data-panel="settings" aria-label="Settings" id="mobileSettingsBtn">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+      <span>Settings</span>
+    </button>
+  </nav>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <!-- HLS.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.7/dist/hls.min.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
