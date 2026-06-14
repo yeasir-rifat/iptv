@@ -1,42 +1,19 @@
 /**
- * StreamVault — Premium IPTV Player
- * Vanilla JavaScript | HLS.js | M3U Parser
- * Modular, production-ready code
+ * IPTV Pro — by rifatplex
+ * Vanilla JS | HLS.js | M3U Parser
+ * Auto-loads built-in playlist on startup
  */
 
 'use strict';
 
 /* ══════════════════════════════════════════════════════════
-   1. DEMO DATA — Realistic sample channels
+   1. BUILT-IN PLAYLIST URL (auto-loads on startup)
 ══════════════════════════════════════════════════════════ */
-const DEMO_M3U = `#EXTM3U
-#EXTINF:-1 tvg-id="bloomberg" tvg-name="Bloomberg TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Bloomberg_Television_logo.svg/200px-Bloomberg_Television_logo.svg.png" group-title="News",Bloomberg TV
-https://dai.google.com/linear/hls/event/Sid4xiahQbq4S7rbHFZTVQ/master.m3u8
-#EXTINF:-1 tvg-id="aljazeera" tvg-name="Al Jazeera English" tvg-logo="https://upload.wikimedia.org/wikipedia/en/thumb/f/f2/Aljazeera_eng.svg/200px-Aljazeera_eng.svg.png" group-title="News",Al Jazeera English
-https://live-hls-web-aje.getaj.net/AJE/01.m3u8
-#EXTINF:-1 tvg-id="nasa" tvg-name="NASA TV" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/NASA_logo.svg/200px-NASA_logo.svg.png" group-title="Science",NASA TV
-https://ntv1.akamaized.net/hls/live/2014075/NASA-NTV1-HLS/master.m3u8
-#EXTINF:-1 tvg-id="cctv4" tvg-name="CCTV-4" tvg-logo="" group-title="International",CCTV-4
-https://cctv4-lh.akamaized.net/live/cctv4.m3u8
-#EXTINF:-1 tvg-id="cgtn" tvg-name="CGTN" tvg-logo="" group-title="News",CGTN
-https://livetv.cgtn.com/live/cgtn/live.m3u8
-#EXTINF:-1 tvg-id="france24en" tvg-name="France 24 English" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/France_24_logo.svg/200px-France_24_logo.svg.png" group-title="News",France 24 English
-https://f24hls-i.akamaihd.net/hls/live/221192/F24_EN_LO_HLS/master.m3u8
-#EXTINF:-1 tvg-id="dwtv" tvg-name="DW English" tvg-logo="https://upload.wikimedia.org/wikipedia/commons/thumb/7/75/Deutsche_Welle_symbol_2012.svg/200px-Deutsche_Welle_symbol_2012.svg.png" group-title="News",DW English
-https://dwamdstream102.akamaized.net/hls/live/2015525/dwstream102/index.m3u8
-#EXTINF:-1 tvg-id="rtdoc" tvg-name="RT Documentary" tvg-logo="" group-title="Documentary",RT Documentary
-https://rt-doc.rttv.com/live/rtdoc/playlist.m3u8
-#EXTINF:-1 tvg-id="bloomberg2" tvg-name="Bloomberg Markets" tvg-logo="" group-title="Business",Bloomberg Markets
-https://dai.google.com/linear/hls/event/Sid4xiahQbq4S7rbHFZTVQ/master.m3u8
-#EXTINF:-1 tvg-id="nasatv2" tvg-name="NASA TV Media" tvg-logo="" group-title="Science",NASA TV Media
-https://ntv2.akamaized.net/hls/live/2014076/NASA-NTV2-HLS/master.m3u8
-#EXTINF:-1 tvg-id="arirang" tvg-name="Arirang TV" tvg-logo="" group-title="International",Arirang TV
-https://liveen-stream3.arirang.com/ariranglive3/ariranglive3.stream/playlist.m3u8
-#EXTINF:-1 tvg-id="ptvworld" tvg-name="PTV World" tvg-logo="" group-title="International",PTV World
-https://ptv-world.akamaized.net/hls/live/2017839/ptv-world/master.m3u8
-`;
+const BUILTIN_PLAYLIST_URL = 'https://raw.githubusercontent.com/imShakil/tvlink/refs/heads/main/iptv.m3u8';
 
-/* Category SVG icon map — inline SVGs, no emojis */
+/* ══════════════════════════════════════════════════════════
+   2. CATEGORY ICON MAP
+══════════════════════════════════════════════════════════ */
 const CAT_ICONS = {
   news:          `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 8h10M7 12h7M7 16h5"/></svg>`,
   science:       `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6M10 3v6L5 19h14L14 9V3"/><circle cx="12" cy="16" r="1.2" fill="currentColor" stroke="none"/></svg>`,
@@ -55,93 +32,93 @@ const CAT_ICONS = {
 };
 
 /* ══════════════════════════════════════════════════════════
-   2. STATE
+   3. STATE
 ══════════════════════════════════════════════════════════ */
 const state = {
-  channels: [],           // All parsed channels
-  filtered: [],           // Filtered / sorted for display
-  currentChannel: null,   // Currently playing channel object
-  currentCategory: 'all', // Active category filter
-  searchQuery: '',        // Active search query
-  sortMode: 'default',    // default | name | fav
-  viewMode: 'grid',       // grid | list
-  favorites: new Set(),   // Set of channel IDs
-  recentlyWatched: [],    // Array of channel IDs (max 20)
-  hls: null,              // HLS.js instance
+  channels: [],
+  filtered: [],
+  currentChannel: null,
+  currentCategory: 'all',
+  searchQuery: '',
+  sortMode: 'default',
+  viewMode: 'grid',
+  favorites: new Set(),
+  recentlyWatched: [],
+  hls: null,
   isMuted: false,
   controlsTimer: null,
   retryCount: 0,
   MAX_RETRY: 3,
+  theme: 'dark',
 };
 
 /* ══════════════════════════════════════════════════════════
-   3. DOM REFERENCES
+   4. DOM REFERENCES
 ══════════════════════════════════════════════════════════ */
 const $ = id => document.getElementById(id);
 const $$ = sel => document.querySelectorAll(sel);
 
 const DOM = {
-  sidebar:         $('sidebar'),
-  sidebarToggle:   $('sidebarToggle'),
-  menuBtn:         $('menuBtn'),
-  searchInput:     $('searchInput'),
-  searchClear:     $('searchClear'),
-  categoryStrip:   $('categoryStrip'),
-  channelList:     $('channelList'),
-  channelCount:    $('channelCount'),
-  emptyState:      $('emptyState'),
-  channelGrid:     $('channelGrid'),
-  gridEmpty:       $('gridEmpty'),
-  gridTitle:       $('gridTitle'),
-  playerWrap:      $('playerWrap'),
-  playerIdle:      $('playerIdle'),
-  playerLoading:   $('playerLoading'),
-  playerError:     $('playerError'),
-  errorMsg:        $('errorMsg'),
-  retryBtn:        $('retryBtn'),
-  videoPlayer:     $('videoPlayer'),
-  controlsOverlay: $('controlsOverlay'),
-  playPauseBtn:    $('playPauseBtn'),
-  playIcon:        $('playIcon'),
-  pauseIcon:       $('pauseIcon'),
-  muteBtn:         $('muteBtn'),
-  volumeSlider:    $('volumeSlider'),
-  volIcon:         $('volIcon'),
-  pipBtn:          $('pipBtn'),
-  fsBtn:           $('fsBtn'),
-  channelInfoBar:  $('channelInfoBar'),
-  nowPlayingLabel: $('nowPlayingLabel'),
-  nowPlayingCat:   $('nowPlayingCategory'),
-  liveBadge:       $('liveBadge'),
-  favBtn:          $('favBtn'),
-  recentBtn:       $('recentBtn'),
-  fullscreenBtn:   $('fullscreenBtn'),
-  infoStrip:       $('infoStrip'),
-  infoLogo:        $('infoLogo'),
-  infoTitle:       $('infoTitle'),
-  infoCat:         $('infoCat'),
-  stripFavBtn:     $('stripFavBtn'),
-  stripShareBtn:   $('stripShareBtn'),
-  recentPanel:     $('recentPanel'),
-  recentList:      $('recentList'),
-  recentClose:     $('recentClose'),
-  m3uUrl:          $('m3uUrl'),
-  loadUrlBtn:      $('loadUrlBtn'),
-  m3uFile:         $('m3uFile'),
-  fileDrop:        $('fileDrop'),
-  loadDemoBtn:     $('loadDemoBtn'),
-  toast:           $('toast'),
-  mainContent:     $('mainContent'),
+  sidebar:           $('sidebar'),
+  sidebarToggle:     $('sidebarToggle'),
+  menuBtn:           $('menuBtn'),
+  hamburgerMenu:     $('hamburgerMenu'),
+  hamburgerSidebar:  $('hamburgerSidebar'),
+  searchInput:       $('searchInput'),
+  searchClear:       $('searchClear'),
+  categoryStrip:     $('categoryStrip'),
+  channelList:       $('channelList'),
+  channelCount:      $('channelCount'),
+  emptyState:        $('emptyState'),
+  channelGrid:       $('channelGrid'),
+  gridEmpty:         $('gridEmpty'),
+  gridTitle:         $('gridTitle'),
+  playerWrap:        $('playerWrap'),
+  playerIdle:        $('playerIdle'),
+  playerLoading:     $('playerLoading'),
+  playerError:       $('playerError'),
+  errorMsg:          $('errorMsg'),
+  retryBtn:          $('retryBtn'),
+  videoPlayer:       $('videoPlayer'),
+  controlsOverlay:   $('controlsOverlay'),
+  playPauseBtn:      $('playPauseBtn'),
+  playIcon:          $('playIcon'),
+  pauseIcon:         $('pauseIcon'),
+  muteBtn:           $('muteBtn'),
+  volumeSlider:      $('volumeSlider'),
+  volIcon:           $('volIcon'),
+  pipBtn:            $('pipBtn'),
+  fsBtn:             $('fsBtn'),
+  channelInfoBar:    $('channelInfoBar'),
+  liveBadge:         $('liveBadge'),
+  infoStrip:         $('infoStrip'),
+  infoLogo:          $('infoLogo'),
+  infoTitle:         $('infoTitle'),
+  infoCat:           $('infoCat'),
+  stripFavBtn:       $('stripFavBtn'),
+  stripShareBtn:     $('stripShareBtn'),
+  recentBtn:         $('recentBtn'),
+  fullscreenBtn:     $('fullscreenBtn'),
+  recentPanel:       $('recentPanel'),
+  recentList:        $('recentList'),
+  recentClose:       $('recentClose'),
+  settingsPanel:     $('settingsPanel'),
+  settingsClose:     $('settingsClose'),
+  themeToggle:       $('themeToggle'),
+  themeToggleTopbar: $('themeToggleTopbar'),
+  themeLabel:        $('themeLabel'),
+  m3uUrl:            $('m3uUrl'),
+  loadUrlBtn:        $('loadUrlBtn'),
+  m3uFile:           $('m3uFile'),
+  fileDrop:          $('fileDrop'),
+  toast:             $('toast'),
+  mainContent:       $('mainContent'),
 };
 
 /* ══════════════════════════════════════════════════════════
-   4. M3U PARSER
+   5. M3U PARSER
 ══════════════════════════════════════════════════════════ */
 const Parser = {
-  /**
-   * Parse raw M3U text into an array of channel objects.
-   * Supports: #EXTINF, tvg-logo, group-title, tvg-name
-   */
   parse(text) {
     const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const channels = [];
@@ -149,7 +126,6 @@ const Parser = {
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-
       if (line.startsWith('#EXTINF')) {
         meta = this._parseMeta(line);
       } else if (meta && !line.startsWith('#')) {
@@ -164,88 +140,100 @@ const Parser = {
         meta = null;
       }
     }
-
     return channels;
   },
 
   _parseMeta(line) {
-    const nameMatch = line.match(/,(.+)$/);
-    const logoMatch = line.match(/tvg-logo="([^"]*)"/);
-    const groupMatch = line.match(/group-title="([^"]*)"/);
+    const nameMatch   = line.match(/,(.+)$/);
+    const logoMatch   = line.match(/tvg-logo="([^"]*)"/);
+    const groupMatch  = line.match(/group-title="([^"]*)"/);
     const tvgNameMatch = line.match(/tvg-name="([^"]*)"/);
-    const tvgIdMatch = line.match(/tvg-id="([^"]*)"/);
-
+    const tvgIdMatch  = line.match(/tvg-id="([^"]*)"/);
     return {
-      name: (tvgNameMatch?.[1] || nameMatch?.[1] || 'Unknown Channel').trim(),
-      logo: logoMatch?.[1]?.trim() || '',
+      name:  (tvgNameMatch?.[1] || nameMatch?.[1] || 'Unknown Channel').trim(),
+      logo:  logoMatch?.[1]?.trim() || '',
       group: groupMatch?.[1]?.trim() || 'General',
       tvgId: tvgIdMatch?.[1]?.trim() || '',
     };
   },
 
-  /** Fetch M3U from URL (with CORS proxy fallback) */
   async fetchFromUrl(url) {
-    // Try direct fetch
+    // Try direct
     try {
       const res = await fetch(url, { mode: 'cors', cache: 'no-store' });
       if (res.ok) return await res.text();
-    } catch (_) { /* cors blocked, try proxy */ }
+    } catch (_) { /* CORS blocked — try proxy */ }
 
-    // Fallback: CORS proxy
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
-    const res = await fetch(proxyUrl);
+    // Fallback proxy
+    const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+    const res = await fetch(proxy);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return await res.text();
   },
 };
 
 /* ══════════════════════════════════════════════════════════
-   5. STORAGE — LocalStorage helpers
+   6. STORAGE
 ══════════════════════════════════════════════════════════ */
 const Storage = {
   get(key, fallback = null) {
     try {
-      const v = localStorage.getItem(`sv_${key}`);
+      const v = localStorage.getItem(`iptv_${key}`);
       return v !== null ? JSON.parse(v) : fallback;
     } catch { return fallback; }
   },
   set(key, val) {
-    try { localStorage.setItem(`sv_${key}`, JSON.stringify(val)); } catch { /* quota */ }
+    try { localStorage.setItem(`iptv_${key}`, JSON.stringify(val)); } catch {}
   },
-  loadFavorites() {
-    state.favorites = new Set(Storage.get('favorites', []));
+  loadFavorites()  { state.favorites = new Set(Storage.get('favorites', [])); },
+  saveFavorites()  { Storage.set('favorites', [...state.favorites]); },
+  loadRecent()     { state.recentlyWatched = Storage.get('recent', []); },
+  saveRecent()     { Storage.set('recent', state.recentlyWatched); },
+  loadTheme()      { return Storage.get('theme', 'dark'); },
+  saveTheme(t)     { Storage.set('theme', t); },
+};
+
+/* ══════════════════════════════════════════════════════════
+   7. THEME
+══════════════════════════════════════════════════════════ */
+const Theme = {
+  apply(theme) {
+    state.theme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    Storage.saveTheme(theme);
+
+    // Update toggle label
+    if (DOM.themeLabel) DOM.themeLabel.textContent = theme === 'dark' ? 'Dark' : 'Light';
+
+    // Update topbar icon (moon ↔ sun)
+    const moon = DOM.themeToggleTopbar?.querySelector('.icon-moon');
+    const sun  = DOM.themeToggleTopbar?.querySelector('.icon-sun');
+    if (moon && sun) {
+      moon.style.display = theme === 'dark' ? 'block' : 'none';
+      sun.style.display  = theme === 'light' ? 'block' : 'none';
+    }
   },
-  saveFavorites() {
-    Storage.set('favorites', [...state.favorites]);
-  },
-  loadRecent() {
-    state.recentlyWatched = Storage.get('recent', []);
-  },
-  saveRecent() {
-    Storage.set('recent', state.recentlyWatched);
+
+  toggle() {
+    Theme.apply(state.theme === 'dark' ? 'light' : 'dark');
   },
 };
 
 /* ══════════════════════════════════════════════════════════
-   6. CHANNEL UTILITIES
+   8. CHANNEL UTILITIES
 ══════════════════════════════════════════════════════════ */
 const Channels = {
-  /** Get unique sorted category list */
   getCategories() {
-    const cats = [...new Set(state.channels.map(c => c.group.toLowerCase()))].sort();
-    return cats;
+    return [...new Set(state.channels.map(c => c.group.toLowerCase()))].sort();
   },
 
-  /** Apply search + category + sort filter */
   applyFilters() {
     let list = [...state.channels];
 
-    // Category
     if (state.currentCategory !== 'all') {
       list = list.filter(c => c.group.toLowerCase() === state.currentCategory);
     }
 
-    // Search
     if (state.searchQuery) {
       const q = state.searchQuery.toLowerCase();
       list = list.filter(c =>
@@ -254,7 +242,6 @@ const Channels = {
       );
     }
 
-    // Sort
     if (state.sortMode === 'name') {
       list.sort((a, b) => a.name.localeCompare(b.name));
     } else if (state.sortMode === 'fav') {
@@ -264,7 +251,6 @@ const Channels = {
     state.filtered = list;
   },
 
-  /** Get SVG icon markup for a group name */
   getIcon(group) {
     const key = (group || '').toLowerCase();
     for (const [k, v] of Object.entries(CAT_ICONS)) {
@@ -273,12 +259,10 @@ const Channels = {
     return CAT_ICONS.default;
   },
 
-  /** Get channel by ID */
   getById(id) {
     return state.channels.find(c => c.id === id) || null;
   },
 
-  /** Add to recently watched */
   addRecent(channel) {
     state.recentlyWatched = [
       channel.id,
@@ -289,10 +273,9 @@ const Channels = {
 };
 
 /* ══════════════════════════════════════════════════════════
-   7. HLS PLAYER
+   9. PLAYER
 ══════════════════════════════════════════════════════════ */
 const Player = {
-  /** Load and play a channel */
   play(channel) {
     state.currentChannel = channel;
     state.retryCount = 0;
@@ -314,9 +297,7 @@ const Player = {
   },
 
   _startStream(url) {
-    // Destroy previous HLS instance
     this._destroyHls();
-
     const video = DOM.videoPlayer;
     UI.showLoading();
 
@@ -327,7 +308,7 @@ const Player = {
         backBufferLength: 30,
         maxBufferLength: 20,
         maxMaxBufferLength: 30,
-        startLevel: -1, // Auto quality
+        startLevel: -1,
       });
 
       hls.loadSource(url);
@@ -363,7 +344,6 @@ const Player = {
       state.hls = hls;
 
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      // Native HLS (Safari / iOS)
       video.src = url;
       video.addEventListener('loadedmetadata', () => {
         video.play().catch(() => {});
@@ -378,20 +358,13 @@ const Player = {
   },
 
   _destroyHls() {
-    if (state.hls) {
-      state.hls.destroy();
-      state.hls = null;
-    }
+    if (state.hls) { state.hls.destroy(); state.hls = null; }
     DOM.videoPlayer.src = '';
   },
 
   togglePlayPause() {
     const v = DOM.videoPlayer;
-    if (v.paused) {
-      v.play().catch(() => {});
-    } else {
-      v.pause();
-    }
+    v.paused ? v.play().catch(() => {}) : v.pause();
   },
 
   setVolume(val) {
@@ -414,12 +387,10 @@ const Player = {
       return;
     }
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture();
-      } else {
-        await DOM.videoPlayer.requestPictureInPicture();
-      }
-    } catch (e) {
+      document.pictureInPictureElement
+        ? await document.exitPictureInPicture()
+        : await DOM.videoPlayer.requestPictureInPicture();
+    } catch {
       showToast('PiP not available for this stream', 'error');
     }
   },
@@ -435,66 +406,61 @@ const Player = {
 };
 
 /* ══════════════════════════════════════════════════════════
-   8. UI RENDERERS
+   10. UI RENDERERS
 ══════════════════════════════════════════════════════════ */
 const UI = {
+
   /* ── Player states ── */
   showLoading() {
-    DOM.playerIdle.style.display = 'none';
-    DOM.playerError.style.display = 'none';
+    DOM.playerIdle.style.display    = 'none';
+    DOM.playerError.style.display   = 'none';
     DOM.playerLoading.style.display = 'flex';
   },
 
   showPlayer() {
     DOM.playerLoading.style.display = 'none';
-    DOM.playerError.style.display = 'none';
-    DOM.playerIdle.style.display = 'none';
-    DOM.liveBadge.style.display = 'flex';
+    DOM.playerError.style.display   = 'none';
+    DOM.playerIdle.style.display    = 'none';
+    DOM.liveBadge.style.display     = 'inline-flex';
   },
 
   showError(msg = '') {
     DOM.playerLoading.style.display = 'none';
-    DOM.playerIdle.style.display = 'none';
-    DOM.playerError.style.display = 'flex';
-    DOM.errorMsg.textContent = msg || 'Unable to connect to this channel\'s stream.';
-    DOM.liveBadge.style.display = 'none';
+    DOM.playerIdle.style.display    = 'none';
+    DOM.playerError.style.display   = 'flex';
+    DOM.errorMsg.textContent        = msg || 'Unable to connect to this channel\'s stream.';
+    DOM.liveBadge.style.display     = 'none';
   },
 
   showIdle() {
-    DOM.playerError.style.display = 'none';
+    DOM.playerError.style.display   = 'none';
     DOM.playerLoading.style.display = 'none';
-    DOM.playerIdle.style.display = 'flex';
-    DOM.liveBadge.style.display = 'none';
+    DOM.playerIdle.style.display    = 'flex';
+    DOM.liveBadge.style.display     = 'none';
   },
 
-  /* ── Now Playing topbar ── */
+  /* ── Now Playing ── */
   updateNowPlaying(channel) {
-    DOM.nowPlayingLabel.textContent = channel.name;
-    DOM.nowPlayingCat.textContent = channel.group;
     DOM.channelInfoBar.textContent = channel.name;
+    DOM.infoTitle.textContent      = channel.name;
+    DOM.infoCat.textContent        = channel.group;
+    DOM.infoStrip.style.display    = 'flex';
 
-    // Info strip
-    DOM.infoTitle.textContent = channel.name;
-    DOM.infoCat.textContent = channel.group;
-    DOM.infoStrip.style.display = 'flex';
-
-    // Logo in info strip
+    // Logo — object-fit: cover set in CSS
     DOM.infoLogo.innerHTML = channel.logo
-      ? `<img src="${escHtml(channel.logo)}" alt="${escHtml(channel.name)} logo" onerror="this.style.display='none';this.parentNode.innerHTML='<span class=\\"info-logo-icon\\">${Channels.getIcon(channel.group).replace(/"/g,"'")}</span>'">`
+      ? `<img src="${escHtml(channel.logo)}" alt="${escHtml(channel.name)}" loading="lazy" onerror="this.style.display='none';this.parentNode.innerHTML='<span class=\\"info-logo-icon\\">${Channels.getIcon(channel.group).replace(/"/g, "'")}</span>'">`
       : `<span class="info-logo-icon">${Channels.getIcon(channel.group)}</span>`;
 
-    // Fav button state
     this.updateFavBtn();
   },
 
   updateFavBtn() {
     if (!state.currentChannel) return;
     const isFav = state.favorites.has(state.currentChannel.id);
-    const heartFilled = `<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="margin-right:5px;vertical-align:-2px"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z"/></svg>`;
-    const heartEmpty = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-right:5px;vertical-align:-2px"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z" stroke-linejoin="round"/></svg>`;
-    DOM.stripFavBtn.innerHTML = isFav ? `${heartFilled}Favorited` : `${heartEmpty}Favorite`;
-    DOM.stripFavBtn.style.color = isFav ? 'var(--accent-1)' : '';
-    DOM.stripFavBtn.style.borderColor = isFav ? 'var(--accent-1)' : '';
+    const filled = `<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor" style="margin-right:5px;vertical-align:-2px"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z"/></svg>`;
+    const empty  = `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-right:5px;vertical-align:-2px"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z" stroke-linejoin="round"/></svg>`;
+    DOM.stripFavBtn.innerHTML = isFav ? `${filled}Favorited` : `${empty}Favorite`;
+    DOM.stripFavBtn.classList.toggle('active', isFav);
   },
 
   updateVolIcon() {
@@ -504,13 +470,13 @@ const UI = {
       : `<path d="M3 6.5H6L10 3v12l-4-3.5H3v-5z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M13 6c1.1.9 1.7 2.4 1.7 3s-.6 2.1-1.7 3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>`;
   },
 
-  /* ── Active channel highlight ── */
+  /* ── Active highlight ── */
   updateActiveHighlight(id) {
     $$('.channel-item.active').forEach(el => el.classList.remove('active'));
     $$('.grid-card.active').forEach(el => el.classList.remove('active'));
 
     const sidebarItem = DOM.channelList.querySelector(`[data-id="${CSS.escape(id)}"]`);
-    const gridCard = DOM.channelGrid.querySelector(`[data-id="${CSS.escape(id)}"]`);
+    const gridCard    = DOM.channelGrid.querySelector(`[data-id="${CSS.escape(id)}"]`);
 
     if (sidebarItem) {
       sidebarItem.classList.add('active');
@@ -519,7 +485,7 @@ const UI = {
     if (gridCard) gridCard.classList.add('active');
   },
 
-  /* ── Category strip ── */
+  /* ── Categories ── */
   renderCategories() {
     const cats = Channels.getCategories();
     DOM.categoryStrip.innerHTML = '';
@@ -529,54 +495,44 @@ const UI = {
       role: 'tab',
       'aria-selected': state.currentCategory === 'all',
       'data-cat': 'all',
-    }, '<span class="cat-chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>All');
-
+    }, `<span class="cat-chip-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>All`);
     allChip.addEventListener('click', () => setCategory('all'));
     DOM.categoryStrip.appendChild(allChip);
 
     cats.forEach(cat => {
-      const iconSvg = Channels.getIcon(cat);
       const chip = createEl('button', {
         class: `cat-chip${state.currentCategory === cat ? ' active' : ''}`,
         role: 'tab',
         'aria-selected': state.currentCategory === cat,
         'data-cat': cat,
-      }, `<span class="cat-chip-icon">${iconSvg}</span>${capitalize(cat)}`);
+      }, `<span class="cat-chip-icon">${Channels.getIcon(cat)}</span>${capitalize(cat)}`);
       chip.addEventListener('click', () => setCategory(cat));
       DOM.categoryStrip.appendChild(chip);
     });
   },
 
-  /* ── Sidebar channel list ── */
+  /* ── Sidebar list ── */
   renderSidebarList() {
     const list = state.filtered;
     DOM.channelCount.textContent = `${list.length} Channel${list.length !== 1 ? 's' : ''}`;
-
     DOM.channelList.innerHTML = '';
 
     if (list.length === 0) {
-      const empty = createEl('div', { class: 'empty-state' },
+      DOM.channelList.appendChild(createEl('div', { class: 'empty-state' },
         `<div class="empty-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><circle cx="10" cy="10" r="7"/><path d="M16 16l5 5"/><path d="M7 8l6 6M13 8L7 14"/></svg></div><p>No channels found</p><small>Try a different search or category</small>`
-      );
-      DOM.channelList.appendChild(empty);
+      ));
       return;
     }
 
     const frag = document.createDocumentFragment();
-    list.forEach((ch, idx) => {
-      const item = this._createSidebarItem(ch, idx);
-      frag.appendChild(item);
-    });
+    list.forEach((ch, idx) => frag.appendChild(this._createSidebarItem(ch, idx)));
     DOM.channelList.appendChild(frag);
 
-    // Re-highlight active
-    if (state.currentChannel) {
-      this.updateActiveHighlight(state.currentChannel.id);
-    }
+    if (state.currentChannel) this.updateActiveHighlight(state.currentChannel.id);
   },
 
   _createSidebarItem(ch, idx) {
-    const isFav = state.favorites.has(ch.id);
+    const isFav   = state.favorites.has(ch.id);
     const iconSvg = Channels.getIcon(ch.group);
 
     const item = createEl('div', {
@@ -585,9 +541,10 @@ const UI = {
       'data-id': ch.id,
       tabindex: '0',
       'aria-label': `${ch.name}, ${ch.group}`,
-      style: `animation-delay: ${Math.min(idx * 18, 300)}ms`,
+      style: `animation-delay: ${Math.min(idx * 16, 300)}ms`,
     });
 
+    // Logo with cover fill
     const logoEl = createEl('div', { class: 'ch-logo' });
     if (ch.logo) {
       const img = createEl('img', { src: ch.logo, alt: ch.name, loading: 'lazy' });
@@ -605,60 +562,40 @@ const UI = {
     const favBtn = createEl('button', {
       class: `ch-fav-btn${isFav ? ' fav-active' : ''}`,
       'aria-label': isFav ? 'Remove from favorites' : 'Add to favorites',
-      title: 'Favorite',
     });
-    favBtn.innerHTML = isFav
-      ? `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z"/></svg>`
-      : `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z" stroke-linejoin="round"/></svg>`;
+    favBtn.innerHTML = isFav ? heartFilled16() : heartEmpty16();
 
     favBtn.addEventListener('click', e => {
       e.stopPropagation();
       toggleFavorite(ch.id);
       const active = state.favorites.has(ch.id);
-      favBtn.innerHTML = active
-        ? `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z"/></svg>`
-        : `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z" stroke-linejoin="round"/></svg>`;
+      favBtn.innerHTML = active ? heartFilled16() : heartEmpty16();
       favBtn.classList.toggle('fav-active', active);
     });
 
     item.append(logoEl, info, favBtn);
-    item.addEventListener('click', () => {
-      Player.play(ch);
-      if (window.innerWidth <= 768) closeSidebar();
-    });
-    item.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Player.play(ch); }
-    });
-
+    item.addEventListener('click', () => { Player.play(ch); if (window.innerWidth <= 768) closeSidebar(); });
+    item.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Player.play(ch); } });
     return item;
   },
 
-  /* ── Grid channel cards ── */
+  /* ── Grid ── */
   renderGrid() {
     DOM.channelGrid.innerHTML = '';
     const list = state.filtered;
 
-    if (list.length === 0) {
-      DOM.gridEmpty.style.display = 'block';
-      return;
-    }
-
+    if (list.length === 0) { DOM.gridEmpty.style.display = 'block'; return; }
     DOM.gridEmpty.style.display = 'none';
 
     const frag = document.createDocumentFragment();
-    list.forEach((ch, idx) => {
-      const card = this._createGridCard(ch, idx);
-      frag.appendChild(card);
-    });
+    list.forEach((ch, idx) => frag.appendChild(this._createGridCard(ch, idx)));
     DOM.channelGrid.appendChild(frag);
 
-    if (state.currentChannel) {
-      this.updateActiveHighlight(state.currentChannel.id);
-    }
+    if (state.currentChannel) this.updateActiveHighlight(state.currentChannel.id);
   },
 
   _createGridCard(ch, idx) {
-    const isFav = state.favorites.has(ch.id);
+    const isFav   = state.favorites.has(ch.id);
     const iconSvg = Channels.getIcon(ch.group);
 
     const card = createEl('div', {
@@ -667,7 +604,7 @@ const UI = {
       'data-id': ch.id,
       tabindex: '0',
       'aria-label': `Play ${ch.name}`,
-      style: `animation-delay: ${Math.min(idx * 25, 400)}ms`,
+      style: `animation-delay: ${Math.min(idx * 22, 400)}ms`,
     });
 
     const thumb = createEl('div', { class: 'grid-card-thumb' });
@@ -681,65 +618,47 @@ const UI = {
         thumb.insertBefore(iconWrap, thumb.firstChild);
       });
       thumb.appendChild(img);
-    }
-
-    if (!ch.logo) {
+    } else {
       const iconWrap = createEl('span', { class: 'thumb-icon' });
       iconWrap.innerHTML = iconSvg;
       thumb.appendChild(iconWrap);
     }
 
-    const liveTag = createEl('span', { class: 'live-tag' }, 'LIVE');
-    thumb.appendChild(liveTag);
-
-    const playOverlay = createEl('div', { class: 'grid-card-play', 'aria-hidden': 'true' },
-      `<div class="play-circle"><svg width="16" height="16" viewBox="0 0 16 16" fill="white"><path d="M4 2l10 6-10 6V2z"/></svg></div>`
+    thumb.appendChild(createEl('span', { class: 'live-tag' }, 'LIVE'));
+    thumb.insertAdjacentHTML('beforeend',
+      `<div class="grid-card-play" aria-hidden="true"><div class="play-circle"><svg width="15" height="15" viewBox="0 0 16 16" fill="white"><path d="M4 2l10 6-10 6V2z"/></svg></div></div>`
     );
-    thumb.appendChild(playOverlay);
 
     const favBtn = createEl('button', {
       class: `grid-fav-btn${isFav ? ' fav-active' : ''}`,
       'aria-label': isFav ? 'Remove from favorites' : 'Add to favorites',
     });
-    favBtn.innerHTML = isFav
-      ? `<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z"/></svg>`
-      : `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z" stroke-linejoin="round"/></svg>`;
+    favBtn.innerHTML = isFav ? heartFilled15() : heartEmpty15();
 
     favBtn.addEventListener('click', e => {
       e.stopPropagation();
       toggleFavorite(ch.id);
       const active = state.favorites.has(ch.id);
-      favBtn.innerHTML = active
-        ? `<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z"/></svg>`
-        : `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z" stroke-linejoin="round"/></svg>`;
+      favBtn.innerHTML = active ? heartFilled15() : heartEmpty15();
       favBtn.classList.toggle('fav-active', active);
     });
 
     const body = createEl('div', { class: 'grid-card-body' },
       `<div class="grid-card-name">${escHtml(ch.name)}</div>
-       <div class="grid-card-meta">
-         <span class="grid-card-cat">${escHtml(ch.group)}</span>
-       </div>`
+       <div class="grid-card-meta"><span class="grid-card-cat">${escHtml(ch.group)}</span></div>`
     );
     body.querySelector('.grid-card-meta').appendChild(favBtn);
 
     card.append(thumb, body);
     card.addEventListener('click', () => Player.play(ch));
-    card.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Player.play(ch); }
-    });
-
+    card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); Player.play(ch); } });
     return card;
   },
 
-  /* ── Recently watched panel ── */
+  /* ── Recently watched ── */
   renderRecentPanel() {
     DOM.recentList.innerHTML = '';
-
-    const list = state.recentlyWatched
-      .map(id => Channels.getById(id))
-      .filter(Boolean)
-      .slice(0, 20);
+    const list = state.recentlyWatched.map(id => Channels.getById(id)).filter(Boolean).slice(0, 20);
 
     if (list.length === 0) {
       DOM.recentList.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:8px 0;">No recently watched channels yet.</p>';
@@ -747,64 +666,55 @@ const UI = {
     }
 
     list.forEach(ch => {
-      const card = createEl('div', {
-        class: 'recent-card',
-        tabindex: '0',
-        'aria-label': `Play ${ch.name}`,
-      });
-
+      const card = createEl('div', { class: 'recent-card', tabindex: '0', 'aria-label': `Play ${ch.name}` });
       const logoWrap = createEl('div', { class: 'recent-card-logo' });
+
       if (ch.logo) {
         const img = createEl('img', { src: ch.logo, alt: '', loading: 'lazy' });
-        img.addEventListener('error', () => {
-          logoWrap.innerHTML = `<span class="recent-icon">${Channels.getIcon(ch.group)}</span>`;
-        });
+        img.addEventListener('error', () => { logoWrap.innerHTML = `<span class="recent-icon">${Channels.getIcon(ch.group)}</span>`; });
         logoWrap.appendChild(img);
       } else {
         logoWrap.innerHTML = `<span class="recent-icon">${Channels.getIcon(ch.group)}</span>`;
       }
 
-      const name = createEl('span', { class: 'recent-card-name' }, escHtml(ch.name));
-
-      card.append(logoWrap, name);
-      card.addEventListener('click', () => {
-        Player.play(ch);
-        DOM.recentPanel.style.display = 'none';
-      });
-      card.addEventListener('keydown', e => {
-        if (e.key === 'Enter') { Player.play(ch); DOM.recentPanel.style.display = 'none'; }
-      });
+      card.append(logoWrap, createEl('span', { class: 'recent-card-name' }, escHtml(ch.name)));
+      card.addEventListener('click', () => { Player.play(ch); DOM.recentPanel.style.display = 'none'; DOM.recentBtn.classList.remove('active'); });
+      card.addEventListener('keydown', e => { if (e.key === 'Enter') { Player.play(ch); DOM.recentPanel.style.display = 'none'; } });
       DOM.recentList.appendChild(card);
     });
   },
 
-  /* ── Skeleton loaders ── */
-  showSkeletons(count = 8) {
+  /* ── Skeletons ── */
+  showSkeletons(count = 10) {
     DOM.channelList.innerHTML = '';
     for (let i = 0; i < count; i++) {
-      const s = createEl('div', { class: 'skeleton-item', 'aria-hidden': 'true' },
+      DOM.channelList.appendChild(createEl('div', { class: 'skeleton-item', 'aria-hidden': 'true' },
         `<div class="skeleton skeleton-logo"></div>
          <div class="skeleton-lines">
-           <div class="skeleton skeleton-line" style="width:${60+Math.random()*30}%"></div>
+           <div class="skeleton skeleton-line" style="width:${60 + Math.random() * 30}%"></div>
            <div class="skeleton skeleton-line short"></div>
          </div>`
-      );
-      DOM.channelList.appendChild(s);
+      ));
     }
   },
 
-  /* ── Grid title ── */
   updateGridTitle() {
-    const cat = state.currentCategory === 'all'
-      ? 'All Channels'
-      : `${capitalize(state.currentCategory)} Channels`;
-    const q = state.searchQuery ? ` — "${state.searchQuery}"` : '';
+    const cat = state.currentCategory === 'all' ? 'All Channels' : `${capitalize(state.currentCategory)} Channels`;
+    const q   = state.searchQuery ? ` — "${state.searchQuery}"` : '';
     DOM.gridTitle.textContent = `${cat}${q}`;
   },
 };
 
 /* ══════════════════════════════════════════════════════════
-   9. ACTIONS / HELPERS
+   11. SVG HELPERS
+══════════════════════════════════════════════════════════ */
+const heartFilled16 = () => `<svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z"/></svg>`;
+const heartEmpty16  = () => `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M8 13.5s-6.5-4-6.5-8A4 4 0 018 2a4 4 0 016.5 3.5C14.5 9.5 8 13.5 8 13.5z" stroke-linejoin="round"/></svg>`;
+const heartFilled15 = () => `<svg width="15" height="15" viewBox="0 0 15 15" fill="currentColor"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z"/></svg>`;
+const heartEmpty15  = () => `<svg width="15" height="15" viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M7.5 12.5s-6-3.7-6-7.5A3.8 3.8 0 017.5 1.5a3.8 3.8 0 016 3C13.5 8.8 7.5 12.5 7.5 12.5z" stroke-linejoin="round"/></svg>`;
+
+/* ══════════════════════════════════════════════════════════
+   12. ACTIONS
 ══════════════════════════════════════════════════════════ */
 function setCategory(cat) {
   state.currentCategory = cat;
@@ -822,7 +732,7 @@ function toggleFavorite(id) {
     showToast('Removed from favorites', 'info');
   } else {
     state.favorites.add(id);
-    showToast('Added to favorites', 'success');
+    showToast('Added to favorites ♥', 'success');
   }
   Storage.saveFavorites();
   UI.updateFavBtn();
@@ -846,13 +756,16 @@ function loadChannels(channels) {
   showToast(`✓ Loaded ${channels.length} channels`, 'success');
 }
 
-/* Sidebar toggle logic */
+/* ── Sidebar ── */
 function openSidebar() {
   DOM.sidebar.classList.remove('collapsed');
   DOM.sidebar.classList.add('mobile-open');
   showBackdrop();
   DOM.menuBtn.setAttribute('aria-expanded', 'true');
   DOM.sidebarToggle.setAttribute('aria-expanded', 'true');
+  // Animate hamburger → X
+  DOM.hamburgerMenu?.classList.add('is-open');
+  DOM.hamburgerSidebar?.classList.add('is-open');
 }
 
 function closeSidebar() {
@@ -861,6 +774,9 @@ function closeSidebar() {
   hideBackdrop();
   DOM.menuBtn.setAttribute('aria-expanded', 'false');
   DOM.sidebarToggle.setAttribute('aria-expanded', 'false');
+  // Animate X → hamburger
+  DOM.hamburgerMenu?.classList.remove('is-open');
+  DOM.hamburgerSidebar?.classList.remove('is-open');
 }
 
 function toggleSidebar() {
@@ -868,13 +784,20 @@ function toggleSidebar() {
   if (isMobile) {
     DOM.sidebar.classList.contains('mobile-open') ? closeSidebar() : openSidebar();
   } else {
-    DOM.sidebar.classList.toggle('collapsed');
-    const expanded = !DOM.sidebar.classList.contains('collapsed');
-    DOM.menuBtn.setAttribute('aria-expanded', expanded);
+    const isCollapsed = DOM.sidebar.classList.toggle('collapsed');
+    // Toggle hamburger animation
+    if (isCollapsed) {
+      DOM.hamburgerMenu?.classList.add('is-open');
+      DOM.hamburgerSidebar?.classList.add('is-open');
+    } else {
+      DOM.hamburgerMenu?.classList.remove('is-open');
+      DOM.hamburgerSidebar?.classList.remove('is-open');
+    }
+    DOM.menuBtn.setAttribute('aria-expanded', !isCollapsed);
   }
 }
 
-/* Backdrop for mobile sidebar */
+/* ── Backdrop ── */
 let backdropEl = null;
 function showBackdrop() {
   if (!backdropEl) {
@@ -884,12 +807,9 @@ function showBackdrop() {
   }
   backdropEl.classList.add('visible');
 }
+function hideBackdrop() { backdropEl?.classList.remove('visible'); }
 
-function hideBackdrop() {
-  backdropEl?.classList.remove('visible');
-}
-
-/* Toast */
+/* ── Toast ── */
 let toastTimer = null;
 function showToast(msg, type = 'info') {
   clearTimeout(toastTimer);
@@ -898,7 +818,7 @@ function showToast(msg, type = 'info') {
   toastTimer = setTimeout(() => DOM.toast.classList.remove('show'), 3000);
 }
 
-/* Helpers */
+/* ── Helpers ── */
 function escHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -908,9 +828,7 @@ function escHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-function capitalize(str) {
-  return str.charAt(0).toUpperCase() + str.slice(1);
-}
+function capitalize(str) { return str.charAt(0).toUpperCase() + str.slice(1); }
 
 function createEl(tag, attrs = {}, html = '') {
   const el = document.createElement(tag);
@@ -919,19 +837,47 @@ function createEl(tag, attrs = {}, html = '') {
   return el;
 }
 
-/* Controls auto-hide */
 function showControls() {
   DOM.playerWrap.classList.add('controls-visible');
   clearTimeout(state.controlsTimer);
   state.controlsTimer = setTimeout(() => {
-    if (!DOM.videoPlayer.paused) {
-      DOM.playerWrap.classList.remove('controls-visible');
-    }
+    if (!DOM.videoPlayer.paused) DOM.playerWrap.classList.remove('controls-visible');
   }, 3000);
 }
 
+function navigateChannel(dir) {
+  if (state.filtered.length === 0) return;
+  const idx  = state.filtered.findIndex(c => c.id === state.currentChannel?.id);
+  const next = (idx + dir + state.filtered.length) % state.filtered.length;
+  Player.play(state.filtered[next]);
+}
+
+function debounce(fn, wait) {
+  let timer;
+  return (...args) => { clearTimeout(timer); timer = setTimeout(() => fn(...args), wait); };
+}
+
 /* ══════════════════════════════════════════════════════════
-   10. EVENT BINDINGS
+   13. AUTO-LOAD BUILT-IN PLAYLIST
+══════════════════════════════════════════════════════════ */
+async function autoLoadBuiltinPlaylist() {
+  UI.showSkeletons(12);
+  try {
+    const text = await Parser.fetchFromUrl(BUILTIN_PLAYLIST_URL);
+    const channels = Parser.parse(text);
+    if (channels.length === 0) throw new Error('No channels found');
+    loadChannels(channels);
+  } catch (e) {
+    console.warn('Auto-load failed:', e.message);
+    // Show empty state with manual load option still available
+    DOM.channelList.innerHTML = '';
+    DOM.emptyState.style.display = '';
+    showToast('Auto-load failed — paste a URL manually', 'error');
+  }
+}
+
+/* ══════════════════════════════════════════════════════════
+   14. EVENT BINDINGS
 ══════════════════════════════════════════════════════════ */
 function bindEvents() {
 
@@ -939,13 +885,13 @@ function bindEvents() {
   DOM.menuBtn.addEventListener('click', toggleSidebar);
   DOM.sidebarToggle.addEventListener('click', toggleSidebar);
 
-  /* ─ M3U loader: tab switch ─ */
+  /* ─ Loader tab switch ─ */
   $$('.loader-tab').forEach(tab => {
     tab.addEventListener('click', () => {
       $$('.loader-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
       const tabName = tab.dataset.tab;
-      document.querySelector('.tab-url').style.display = tabName === 'url' ? 'flex' : 'none';
+      document.querySelector('.tab-url').style.display  = tabName === 'url'  ? 'flex' : 'none';
       document.querySelector('.tab-file').style.display = tabName === 'file' ? 'flex' : 'none';
     });
   });
@@ -960,7 +906,7 @@ function bindEvents() {
     UI.showSkeletons();
 
     try {
-      const text = await Parser.fetchFromUrl(url);
+      const text     = await Parser.fetchFromUrl(url);
       const channels = Parser.parse(text);
       if (channels.length === 0) throw new Error('No channels found in playlist');
       loadChannels(channels);
@@ -972,15 +918,6 @@ function bindEvents() {
       DOM.loadUrlBtn.innerHTML = `<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 1v8M3.5 5.5L7 9l3.5-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/><path d="M1 11h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg> Load`;
       DOM.loadUrlBtn.disabled = false;
     }
-  });
-
-  /* ─ Load demo ─ */
-  DOM.loadDemoBtn.addEventListener('click', () => {
-    UI.showSkeletons(12);
-    setTimeout(() => {
-      const channels = Parser.parse(DEMO_M3U);
-      loadChannels(channels);
-    }, 600);
   });
 
   /* ─ File upload ─ */
@@ -1000,8 +937,7 @@ function bindEvents() {
     reader.readAsText(file);
   });
 
-  /* Drag and drop */
-  DOM.fileDrop.addEventListener('dragover', e => { e.preventDefault(); DOM.fileDrop.classList.add('drag-over'); });
+  DOM.fileDrop.addEventListener('dragover',  e => { e.preventDefault(); DOM.fileDrop.classList.add('drag-over'); });
   DOM.fileDrop.addEventListener('dragleave', () => DOM.fileDrop.classList.remove('drag-over'));
   DOM.fileDrop.addEventListener('drop', e => {
     e.preventDefault();
@@ -1009,10 +945,7 @@ function bindEvents() {
     const file = e.dataTransfer.files[0];
     if (!file?.name.match(/\.m3u8?$/i)) { showToast('Please drop an .m3u or .m3u8 file', 'error'); return; }
     const reader = new FileReader();
-    reader.onload = ev => {
-      const channels = Parser.parse(ev.target.result);
-      loadChannels(channels);
-    };
+    reader.onload = ev => { const channels = Parser.parse(ev.target.result); loadChannels(channels); };
     reader.readAsText(file);
   });
 
@@ -1031,7 +964,7 @@ function bindEvents() {
     renderAll();
   });
 
-  /* ─ Sort buttons ─ */
+  /* ─ Sort ─ */
   $$('.sort-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('.sort-btn').forEach(b => b.classList.remove('active'));
@@ -1041,33 +974,16 @@ function bindEvents() {
     });
   });
 
-  /* ─ Video player events ─ */
+  /* ─ Video events ─ */
   const video = DOM.videoPlayer;
+  video.addEventListener('play',  () => { DOM.playIcon.style.display = 'none';  DOM.pauseIcon.style.display = 'block'; });
+  video.addEventListener('pause', () => { DOM.playIcon.style.display = 'block'; DOM.pauseIcon.style.display = 'none'; DOM.playerWrap.classList.add('controls-visible'); });
+  video.addEventListener('volumechange', () => { DOM.volumeSlider.value = video.muted ? 0 : video.volume; UI.updateVolIcon(); });
 
-  video.addEventListener('play', () => {
-    DOM.playIcon.style.display = 'none';
-    DOM.pauseIcon.style.display = 'block';
-  });
-
-  video.addEventListener('pause', () => {
-    DOM.playIcon.style.display = 'block';
-    DOM.pauseIcon.style.display = 'none';
-    DOM.playerWrap.classList.add('controls-visible');
-  });
-
-  video.addEventListener('volumechange', () => {
-    DOM.volumeSlider.value = video.muted ? 0 : video.volume;
-    UI.updateVolIcon();
-  });
-
-  /* Controls mouse move */
   DOM.playerWrap.addEventListener('mousemove', showControls);
   DOM.playerWrap.addEventListener('touchstart', showControls, { passive: true });
-  DOM.playerWrap.addEventListener('click', e => {
-    if (e.target === video || e.target === DOM.playerWrap) Player.togglePlayPause();
-  });
+  DOM.playerWrap.addEventListener('click', e => { if (e.target === video || e.target === DOM.playerWrap) Player.togglePlayPause(); });
 
-  /* Control buttons */
   DOM.playPauseBtn.addEventListener('click', Player.togglePlayPause.bind(Player));
   DOM.muteBtn.addEventListener('click', Player.toggleMute.bind(Player));
   DOM.volumeSlider.addEventListener('input', e => Player.setVolume(parseFloat(e.target.value)));
@@ -1076,19 +992,28 @@ function bindEvents() {
   DOM.fullscreenBtn.addEventListener('click', Player.toggleFullscreen.bind(Player));
   DOM.retryBtn.addEventListener('click', () => Player.retry());
 
-  /* Fullscreen change */
   document.addEventListener('fullscreenchange', () => {
-    const isFs = !!document.fullscreenElement;
-    DOM.fsBtn.title = isFs ? 'Exit fullscreen' : 'Fullscreen';
+    DOM.fsBtn.title = document.fullscreenElement ? 'Exit fullscreen' : 'Fullscreen';
   });
 
-  /* ─ Topbar actions ─ */
-  DOM.favBtn.addEventListener('click', () => {
+  /* ─ Info strip actions ─ */
+  DOM.stripFavBtn.addEventListener('click', () => {
     if (!state.currentChannel) return;
     toggleFavorite(state.currentChannel.id);
-    DOM.favBtn.classList.toggle('active', state.favorites.has(state.currentChannel.id));
   });
 
+  DOM.stripShareBtn.addEventListener('click', () => {
+    if (!state.currentChannel) return;
+    if (navigator.share) {
+      navigator.share({ title: state.currentChannel.name, text: `Watch ${state.currentChannel.name} live!` }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(state.currentChannel.url)
+        .then(() => showToast('Stream URL copied!', 'success'))
+        .catch(() => showToast('Could not copy URL', 'error'));
+    }
+  });
+
+  /* ─ History button ─ */
   DOM.recentBtn.addEventListener('click', () => {
     const isOpen = DOM.recentPanel.style.display !== 'none';
     if (isOpen) {
@@ -1105,25 +1030,17 @@ function bindEvents() {
     DOM.recentBtn.classList.remove('active');
   });
 
-  /* ─ Info strip actions ─ */
-  DOM.stripFavBtn.addEventListener('click', () => {
-    if (!state.currentChannel) return;
-    toggleFavorite(state.currentChannel.id);
+  /* ─ Theme toggles ─ */
+  DOM.themeToggle?.addEventListener('click', Theme.toggle.bind(Theme));
+  DOM.themeToggleTopbar?.addEventListener('click', Theme.toggle.bind(Theme));
+
+  /* ─ Settings panel ─ */
+  DOM.settingsClose?.addEventListener('click', () => {
+    DOM.settingsPanel.style.display = 'none';
+    $$('.mobile-nav-btn').forEach(b => b.classList.toggle('active', b.dataset.panel === 'home'));
   });
 
-  DOM.stripShareBtn.addEventListener('click', () => {
-    if (!state.currentChannel) return;
-    if (navigator.share) {
-      navigator.share({ title: state.currentChannel.name, text: `Watch ${state.currentChannel.name} live!` })
-        .catch(() => {});
-    } else {
-      navigator.clipboard.writeText(state.currentChannel.url)
-        .then(() => showToast('Stream URL copied!', 'success'))
-        .catch(() => showToast('Could not copy URL', 'error'));
-    }
-  });
-
-  /* ─ View toggle (grid / list) ─ */
+  /* ─ View toggle ─ */
   $$('.view-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       $$('.view-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed', 'false'); });
@@ -1140,8 +1057,14 @@ function bindEvents() {
       $$('.mobile-nav-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       const panel = btn.dataset.panel;
-      if (panel === 'channels') openSidebar();
-      else if (panel === 'favorites') {
+
+      // Close any open panels first
+      DOM.recentPanel.style.display   = 'none';
+      DOM.settingsPanel.style.display = 'none';
+
+      if (panel === 'channels') {
+        openSidebar();
+      } else if (panel === 'favorites') {
         state.sortMode = 'fav';
         $$('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'fav'));
         renderAll();
@@ -1150,95 +1073,62 @@ function bindEvents() {
         state.currentCategory = 'all';
         $$('.sort-btn').forEach(b => b.classList.toggle('active', b.dataset.sort === 'default'));
         renderAll();
+      } else if (panel === 'settings') {
+        DOM.settingsPanel.style.display = 'block';
       }
     });
   });
 
   /* ─ Keyboard shortcuts ─ */
   document.addEventListener('keydown', e => {
-    // Don't fire when typing in inputs
     if (['INPUT', 'TEXTAREA'].includes(e.target.tagName)) return;
-
     switch (e.key) {
-      case ' ':
-      case 'k':
-        e.preventDefault();
-        Player.togglePlayPause();
-        break;
-      case 'f':
-      case 'F':
-        Player.toggleFullscreen();
-        break;
-      case 'm':
-      case 'M':
-        Player.toggleMute();
-        break;
-      case 'ArrowLeft':
-        navigateChannel(-1);
-        break;
-      case 'ArrowRight':
-      case 'ArrowDown':
-        navigateChannel(1);
-        break;
+      case ' ': case 'k': e.preventDefault(); Player.togglePlayPause(); break;
+      case 'f': case 'F': Player.toggleFullscreen(); break;
+      case 'm': case 'M': Player.toggleMute(); break;
+      case 'ArrowLeft':  navigateChannel(-1); break;
+      case 'ArrowRight': case 'ArrowDown': navigateChannel(1); break;
       case 'Escape':
         closeSidebar();
+        DOM.recentPanel.style.display   = 'none';
+        DOM.settingsPanel.style.display = 'none';
         if (document.fullscreenElement) document.exitFullscreen();
         break;
-      case '/':
-        e.preventDefault();
-        DOM.searchInput.focus();
-        break;
+      case '/': e.preventDefault(); DOM.searchInput.focus(); break;
     }
   });
 
-  /* ─ Resize handler ─ */
+  /* ─ Resize ─ */
   window.addEventListener('resize', debounce(() => {
     if (window.innerWidth > 768) {
       DOM.sidebar.classList.remove('mobile-open');
       hideBackdrop();
+      DOM.hamburgerMenu?.classList.remove('is-open');
+      DOM.hamburgerSidebar?.classList.remove('is-open');
     }
   }, 200));
 }
 
-/* Navigate channels via keyboard */
-function navigateChannel(dir) {
-  if (state.filtered.length === 0) return;
-  const idx = state.filtered.findIndex(c => c.id === state.currentChannel?.id);
-  const next = (idx + dir + state.filtered.length) % state.filtered.length;
-  Player.play(state.filtered[next]);
-}
-
-/* Debounce utility */
-function debounce(fn, wait) {
-  let timer;
-  return (...args) => {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn(...args), wait);
-  };
-}
-
 /* ══════════════════════════════════════════════════════════
-   11. INIT
+   15. INIT
 ══════════════════════════════════════════════════════════ */
 function init() {
+  // Load persisted state
   Storage.loadFavorites();
   Storage.loadRecent();
 
+  // Apply saved theme
+  Theme.apply(Storage.loadTheme());
+
+  // UI initial state
   UI.showIdle();
   bindEvents();
 
-  // Show initial empty state
-  DOM.emptyState.style.display = '';
-  DOM.channelCount.textContent = '0 Channels';
+  // Auto-load the built-in playlist
+  autoLoadBuiltinPlaylist();
 
-  // Keyboard shortcut hint
-  console.log(
-    '%c⌨ StreamVault Keyboard Shortcuts',
-    'font-weight:bold; color:#e94560; font-size:13px;'
-  );
-  console.log('Space / K — Play/Pause | F — Fullscreen | M — Mute');
-  console.log('← → — Previous/Next channel | / — Focus search | Esc — Close');
+  console.log('%c▶ IPTV Pro — by rifatplex', 'font-weight:700; color:#ff0000; font-size:13px;');
+  console.log('Keyboard: Space/K = Play/Pause | F = Fullscreen | M = Mute | ← → = Prev/Next | / = Search | Esc = Close');
 }
 
-/* ── Bootstrap ── */
 document.addEventListener('DOMContentLoaded', init);
